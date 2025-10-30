@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <stdlib.h>
 
 //finding and opening all the specified files, including directory traversal
 
