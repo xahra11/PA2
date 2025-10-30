@@ -10,11 +10,63 @@
 
 #define BUFSIZE 128
 
-//reading the file and generating a sequence of position-annotated words
+// reading the file and generating a sequence of position-annotated words
 
-//checking whether a word is contained in the dictionary
+// checking whether a word is contained in the dictionary
 
 // finding and opening all the specified files, including directory traversal
+
+void read_file(const char *filePath, int dict_fd){
+    int file_fd = open(filePath, O_RDONLY);
+    if(file_fd < 0){
+        perror(filePath);
+        return;
+    }
+
+    char buf[BUFSIZE + 1];
+    int bytes;
+
+    while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
+        buf[bytes] = '\0';
+        // tokenize and check each word in dictionary
+    }
+    close(fd);
+}
+
+void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
+    DIR *dp = opendir(dirPath);
+    if(dp == NULL){
+        perror(dirPath);
+        return;
+    }
+
+    struct dirent *de;
+    while((de = readdir(dp)) != NULL){
+        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0){
+            continue;
+        }
+
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", path, de->d_name);
+
+        struct stat subStat;
+        if(stat(path, &subStat) == -1){
+            perror(path);
+            continue;
+        }
+
+        if(S_ISREG(subStat.st_mode)){
+            if(strstr(de->d_name, suffix) != NULL){
+                // matching suffix file
+                read_file(path, dict_fd);
+            }
+        }else if(S_ISDIR(subStat.st_mode)){
+            traverse_directory(path, suffix, dict_fd);
+        }
+    }
+    closedir(dp);
+}
+
 int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or directory}]*, suffix is optional
     // dictionary has word list
     // one or more inputs
@@ -41,16 +93,15 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     }
 
     char *dictPath = argv[index];
-
     int dict_fd = open(dictPath, O_RDONLY);
     if (dict_fd < 0) {
         perror(dictPath);
         exit(EXIT_FAILURE);
     }
 
-    for(int i = 1; i < argc; i++){
+    for(int i = 2; i < argc; i++){
         if (strcmp(argv[i], "-s") == 0){
-            printf("ERROR: -s can only be first argument"); // forbid -s from occurring later than first argument
+            fprintf(stderr, "ERROR: -s can only be the first argument.\n"); // forbid -s from occurring later than first argument
             return 1;
         }
     }
@@ -79,22 +130,8 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
             
         }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it
             // TO DO: traverse directory, then open each file
-            DIR *dp = opendir(filePath);
-            if(dp == NULL){
-                perror(filePath);
-                continue;
-            }
-
-            struct dirent *de;
-            while((de = readdir(dp)) != NULL){
-                if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0){
-                    continue;
-                }
-
-                
-            }
-            closedir(dp);
+            
         }
-    }
+    } 
 
 }
