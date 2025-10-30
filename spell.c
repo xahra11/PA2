@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
             }
 
             while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
-                buf[bytes] = '\0'
+                buf[bytes] = '\0';
                 // TO DO: read file using buffer
             }
             if
@@ -80,14 +80,18 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it
             // TO DO: traverse directory, then open each file
             DIR *dp = opendir(filePath);
-            if(dp == null){
+            if(dp == NULL){
                 perror(filePath);
                 continue;
             }
 
             struct dirent *de;
-            while((de = readdir(dp))){
+            while((de = readdir(dp)) != NULL){
+                if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0){
+                    continue;
+                }
 
+                
             }
             closedir(dp);
         }
