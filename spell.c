@@ -18,11 +18,16 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         return 1;
     }
 
-    // if an argument begins with -s, then the next argument will specify the file name suffix to be used when scanning directories
-    for(int i = 0; i < (argc - 1); i++){
+    if(strcmp(argv[0], "-s") == 0){
+        char suffix[] = argv[1]; // if an argument begins with -s, then the next argument will specify the file name suffix to be used when scanning directories
+    }else{
+        char suffix[] = ".txt";
+    }
+
+    for(int i = 1; i < argc; i++){
         if (strcmp(argv[i], "-s") == 0){
-            char suffix[] = argv[i+1];
-            break;
+            printf("ERROR: -s can only be first argument"); // forbid -s from occurring later than first argument
+            return 1;
         }
     }
 }
