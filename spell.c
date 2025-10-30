@@ -10,13 +10,11 @@
 
 #define BUFSIZE 128
 
-//finding and opening all the specified files, including directory traversal
-
 //reading the file and generating a sequence of position-annotated words
 
 //checking whether a word is contained in the dictionary
 
-// take in arguments from command line
+// finding and opening all the specified files, including directory traversal
 int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or directory}]*, suffix is optional
     // dictionary has word list
     // one or more inputs
@@ -73,14 +71,25 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
                 continue;
             }
 
-            // read file
             while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
                 buf[bytes] = '\0'
-                
+                // TO DO: read file using buffer
             }
             if
             
         }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it
+            // TO DO: traverse directory, then open each file
+            DIR *dp = opendir(filePath);
+            if(dp == null){
+                perror(filePath);
+                continue;
+            }
+
+            struct dirent *de;
+            while((de = readdir(dp))){
+
+            }
+            closedir(dp);
         }
     }
 
