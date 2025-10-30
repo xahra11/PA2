@@ -18,8 +18,12 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         return 1;
     }
 
+    bool suffixExists = false
+
     if(strcmp(argv[0], "-s") == 0){
         char suffix[] = argv[1]; // if an argument begins with -s, then the next argument will specify the file name suffix to be used when scanning directories
+        suffixExists = true;
+
     }else{
         char suffix[] = ".txt";
     }
@@ -30,4 +34,12 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
             return 1;
         }
     }
+
+    if(suffixExists){ // if there is a suffix argument, -s and suffix take up first two arguments
+        char dictionary[] = argv[2]
+    }else{
+        char dictionary[] = argv[0]
+    }
+
+    
 }
