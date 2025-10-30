@@ -52,4 +52,25 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }
     }
 
+    for(int i = index + 1; i < argc; i++){
+        char *filePath = argv[i];
+        struct stat statinfo;
+
+        if(stat(filePath, &statinfo) == -1){
+            perror(filePath);
+            continue
+        }
+
+        if(S_ISREG(statinfo.st_mode)){ // is regular file, open file
+            int file_fd = open(filePath, O_RDONLY);
+            if(file_fd < 0){
+                perror(filePath);
+                continue;
+            }
+
+            // read file
+        }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it 
+        }
+    }
+
 }
