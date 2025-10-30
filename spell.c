@@ -6,6 +6,9 @@
 #include <stdbool.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <ctype.h>
+
+#define BUFSIZE 128
 
 //finding and opening all the specified files, including directory traversal
 
@@ -26,6 +29,8 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     bool suffixExists = false 
     char *suffix = ".txt"; // default suffix
     int index = 1; 
+    char buf[BUFSIZE + 1]; // +1 for \n
+    int bytes;
 
     if(strcmp(argv[1], "-s") == 0){
         if(argc < 4){
@@ -69,7 +74,13 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
             }
 
             // read file
-        }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it 
+            while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
+                buf[bytes] = '\0'
+                
+            }
+            if
+            
+        }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it
         }
     }
 
