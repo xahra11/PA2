@@ -9,7 +9,6 @@
 #include <ctype.h>
 
 #define BUFSIZE 128
-#define MAX_WORD 256
 
 // reading the file and generating a sequence of position-annotated words
 
@@ -45,9 +44,9 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     }
 
     char *dictPath = argv[index];
-
     int dict_size = 0;
     char **dictionary = load_dictionary(dictPath, &dict_size);
+
     if (!dictionary) {
         fprintf(stderr, "%s\n dictionary did not load.\n", dictPath);
         exit(EXIT_FAILURE);
@@ -66,7 +65,7 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
 
         if(stat(filePath, &statinfo) == -1){
             perror(filePath);
-            continue
+            continue;
         }
 
         if(S_ISREG(statinfo.st_mode)){ // is regular file, open file
@@ -83,10 +82,10 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     }
     free(dictionary);
     
-    return 0
+    return 0;
 }
 
-bool is_number(const char *word){
+bool is_number(const char *word){ // check if word is only a number
     for(int i = 0; word[i]; i++){
         if(!isdigit((unsigned char)word[i])){
             return false;
@@ -95,25 +94,36 @@ bool is_number(const char *word){
     return true;
 }
 
-void strip_word(char *word){
+void normalize(char *word){
+    if(!word || word[0] == '\0'){
+        return;
+    }
+
     int start = 0;
     int end = strlen(word) - 1;
 
+    // move start index forward to ignore beginning punctuation
     while(start <= end && ispunct((unsigned char)word[start]) && word[start] != '-'){
         start++;
     }
 
+    // move end index backward to ignore trailing punctuation
     while(end >= start && ispunct((unsigned char)word[end]) && word[end] != '-'){
         end--;
     }
 
-    int length = end - start + 1;
+    int length = end - start + 1; // new word length 
     if(length < 0){
         length = 0;
     }
-    memmove(word, word + start, length);
+
+    // new string without punctuation
+    if(start > 0 && length > 0){
+        memmove(word, word + start, length); 
+    }
     word[length] = '\0';
 
+    // lowercase word
     for(int i = 0; word[i]; i++){
         word[i] = tolower(word[i]);
     }
@@ -131,42 +141,68 @@ void read_file(const char *filePath, int dict_fd){
     }
 
     char buf[BUFSIZE + 1];
-    char word[MAX_WORD];
     int bytes;
+    char *word = NULL;
+    int capacity = 0;
     int word_length = 0;
     int line = 1;
-    int col = 0;
+    int col = 1;
+    int startCol = 1;
 
     while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
-        buf[bytes] = '\0';
         // tokenize and check each word in dictionary
         for(int i = 0; i < bytes; i++){
             char ch = buf[i];
             col++;
 
-            if(isspace(ch)){
+            if(isspace(ch)){ // end of word
                 if(word_length > 0){
                     word[word_length] = '\0';
-                    strip_word(word);\
+                    normalize(word);
 
                     if(strlen(word) > 0 && !is_number(word)){ 
+                        // print misspelled words
                         if(!check_dictionary(word, dict_fd)){
-                            printf("%s:%d:%d %s", filePath, line, col, word);
+                            printf("%s:%d:%d %s", filePath, line, startCol, word);
                         }
                     }
                     word_length = 0;
                 }
-                if(ch == '\n'){
+                if(ch == '\n'){ // new line
                     line++;
-                    col = 0;
+                    col = 1;
                 }
             }else{
-                if(word_length < MAX_WORD - 1){
-                    word[word_length++] = ch;
-                } 
+                if(word_length == 0){
+                    startCol = col;
+                }
+
+                if(word == NULL){
+                    capacity = 16;
+                    word = malloc(capacity);
+                    if(!word){
+                        perror("malloc");
+                        close(file_fd);
+                        return;
+                    }
+                }
+
+                if(word_length + 1 >= capacity){
+                    capacity *= 2;
+                    char *temp = realloc(word, capacity);
+                    if(!tmp){
+                        perror("realloc");
+                        free(word);
+                        close(file_fd);
+                        return;
+                    }
+                }
+
+                word[word_length++] = ch;
             }
         }
     }
+    free(word);
     close(file_fd);
 }
 
