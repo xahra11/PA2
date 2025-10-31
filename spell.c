@@ -19,6 +19,7 @@
 // function  prototypes
 void read_file(const char *filePath, int dict_fd);
 void traverse_directory(const char *dirPath, const char *suffix, int dict_fd);
+char **load_dictionary(const char *dictPath);
 
 int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or directory}]*, suffix is optional
     // dictionary has word list
@@ -44,8 +45,7 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     }
 
     char *dictPath = argv[index];
-    int dict_size = 0;
-    char **dictionary = load_dictionary(dictPath, &dict_size);
+    char **dictionary = load_dictionary(dictPath);
 
     if (!dictionary) {
         fprintf(stderr, "%s\n dictionary did not load.\n", dictPath);
@@ -85,9 +85,106 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     return 0;
 }
 
+char **load_dictionary(const char *dictPath){
+    int dict_fd = open(dictPath, O_RDONLY);
+    if(dict_fd < 0){
+        perror(dictPath);
+        return NULL;
+    } 
+
+    int capacity = 50;
+    char **dictionary = malloc(capacity * sizeof(char*));
+    if (!dictionary) {
+        perror("malloc");
+        close(dict_fd);
+        return NULL;
+    }
+
+    char buf[BUFSIZE + 1];
+    int bytes;
+    int *dict_size = 0;
+
+    int word_capacity = 16;
+    int word_length = 0;
+    char *word = malloc(capacity);
+    if(!word){
+        perror("malloc");
+        close(file_fd);
+        return;
+    }
+
+    while((bytes = read(dict_fd, buf, BUFSIZE)) > 0){
+        // tokenize and check each word in dictionary
+        for(int i = 0; i < bytes; i++){
+            char ch = buf[i];
+
+            if(isspace(ch)){ // end of word
+                if(word_length > 0){
+                    word[word_length] = '\0';
+                    normalize(word);
+
+                    if(strlen(word) > 0){
+                        if(*dict_size >= capacity){
+                            capacity *= 2;
+                            dictionary = realloc(dictionary, capacity * sizeof(char *));
+                            if(!dictionary){
+                                perror("realloc");
+                                close(fd);
+                                return NULL;
+                            }
+                        }
+                        dictionary[*dict_size] = strdup(word);
+                        (*dict_size)++;
+                    }
+                    word_length = 0;
+                }
+            }else{
+                if (word_length < word_capacity - 1) {
+                    word[word_length++] = ch;
+                } else {
+                    // allocate more space for word
+                    word_capacity *= 2;
+                    word = realloc(word, word_capacity);
+                    if (!word) {
+                        perror("realloc");
+                        close(dict_fd);
+                        for (int j = 0; j < *dict_size; j++)
+                            free(dictionary[j]);
+                        free(dictionary);
+                        return NULL;
+                    }
+                word[word_length++] = ch;
+            }
+        }
+    }
+
+    if (word_length > 0) {
+        word[word_length] = '\0';
+        normalize(word);
+        if (strlen(word) > 0) {
+            if (*dict_size >= capacity) {
+                capacity *= 2;
+                dictionary = realloc(dictionary, capacity * sizeof(char *));
+                if (!dictionary) {
+                    perror("realloc");
+                    close(dict_fd);
+                    free(word);
+                    return NULL;
+                }
+            }
+            dictionary[*dict_size] = strdup(word);
+            (*dict_size)++;
+        }
+    }
+
+    free(word);
+    close(file_fd);
+    return dictionary;
+}
+
 bool is_number(const char *word){ // check if word is only a number
     if(!word || word[0] == '\0'){
-        return;
+        return false;
     }
     
     for(int i = 0; word[i]; i++){
@@ -137,7 +234,7 @@ bool check_dictionary(const char *word, int dict_fd){
     return false;
 }
 
-void read_file(const char *filePath, int dict_fd){
+void read_file(const char *filePath, int dict_fd, int *dict_size){
     int file_fd = open(filePath, O_RDONLY);
     if(file_fd < 0){
         perror(filePath);
@@ -194,7 +291,7 @@ void read_file(const char *filePath, int dict_fd){
                 if(word_length + 1 >= capacity){ // resize word
                     capacity *= 2;
                     char *temp = realloc(word, capacity);
-                    if(!tmp){
+                    if(!temp){
                         perror("realloc");
                         free(word);
                         close(file_fd);
@@ -229,7 +326,7 @@ void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
         if(!path){
             perror("malloc");
             closedir(dp);
-            return
+            return;
         }
         snprintf(path, size, "%s/%s", dirPath, de->d_name);
 
