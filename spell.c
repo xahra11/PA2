@@ -33,7 +33,6 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         exit(EXIT_FAILURE);
     }
 
-    bool suffixExists = false;
     char *suffix = ".txt"; // default suffix
     int index = 1; 
 
@@ -43,7 +42,6 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
             exit(EXIT_FAILURE);
         }
         suffix = argv[2]; // if an argument begins with -s, then the next argument will specify the file name suffix to be used when scanning directories
-        suffixExists = true;
         index = 3; // if there is a suffix argument, -s and suffix take up first two arguments, so dictionary starts at third
     }
 
@@ -89,9 +87,9 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     return 0;
 }
 
-char **load_dictionary(const char *dictPath){
-    int dict_fd = open(dictPath, O_RDONLY);
-    if(dict_fd < 0){
+char **load_dictionary(const char *dictPath, int *dict_size){
+    int fd = open(dictPath, O_RDONLY);
+    if(fd < 0){
         perror(dictPath);
         return NULL;
     } 
@@ -100,24 +98,24 @@ char **load_dictionary(const char *dictPath){
     char **dictionary = malloc(capacity * sizeof(char*));
     if (!dictionary) {
         perror("malloc");
-        close(dict_fd);
+        close(fd);
         return NULL;
     }
 
     char buf[BUFSIZE + 1];
     int bytes;
-    int *dict_size = 0;
 
     int word_capacity = 16;
     int word_length = 0;
-    char *word = malloc(capacity);
+    char *word = malloc(word_capacity);
     if(!word){
         perror("malloc");
-        close(file_fd);
-        return;
+        close(fd);
+        free(dictionary);
+        return NULL;
     }
 
-    while((bytes = read(dict_fd, buf, BUFSIZE)) > 0){
+    while((bytes = read(fd, buf, BUFSIZE)) > 0){
         // tokenize and check each word in dictionary
         for(int i = 0; i < bytes; i++){
             char ch = buf[i];
@@ -133,6 +131,7 @@ char **load_dictionary(const char *dictPath){
                             dictionary = realloc(dictionary, capacity * sizeof(char *));
                             if(!dictionary){
                                 perror("realloc");
+                                free(word);
                                 close(fd);
                                 return NULL;
                             }
@@ -143,20 +142,17 @@ char **load_dictionary(const char *dictPath){
                     word_length = 0;
                 }
             }else{
-                if (word_length < word_capacity - 1) {
-                    word[word_length++] = ch;
-                } else {
-                    // allocate more space for word
+                if(word_length + 1 >= word_capacity){
                     word_capacity *= 2;
                     word = realloc(word, word_capacity);
-                    if (!word) {
+                    if(!word){
                         perror("realloc");
-                        close(dict_fd);
-                        for (int j = 0; j < *dict_size; j++)
-                            free(dictionary[j]);
+                        close(fd);
+                        for(int j = 0; j < *dict_size; j++) free(dictionary[j]);
                         free(dictionary);
                         return NULL;
                     }
+                }
                 word[word_length++] = ch;
             }
         }
@@ -171,8 +167,8 @@ char **load_dictionary(const char *dictPath){
                 dictionary = realloc(dictionary, capacity * sizeof(char *));
                 if (!dictionary) {
                     perror("realloc");
-                    close(dict_fd);
                     free(word);
+                    close(fd);
                     return NULL;
                 }
             }
@@ -182,7 +178,7 @@ char **load_dictionary(const char *dictPath){
     }
 
     free(word);
-    close(file_fd);
+    close(fd);
     return dictionary;
 }
 
@@ -208,12 +204,14 @@ void normalize(char *word){
     int end = strlen(word) - 1;
 
     // move start index forward to ignore beginning punctuation
-    while(start <= end && ispunct((unsigned char)word[start]) && word[start] != '-'){
+    while (start <= end && (word[start] == '(' || word[start] == '[' ||
+                            word[start] == '{' || word[start] == '\'' ||
+                            word[start] == '"')) {
         start++;
     }
 
     // move end index backward to ignore trailing punctuation
-    while(end >= start && ispunct((unsigned char)word[end]) && word[end] != '-'){
+    while (end >= start && !isalnum((unsigned char)word[end]) && word[end] != '-') {
         end--;
     }
 
@@ -227,50 +225,62 @@ void normalize(char *word){
         memmove(word, word + start, length); 
     }
     word[length] = '\0';
-
-    // lowercase word
-    for(int i = 0; word[i]; i++){
-        word[i] = tolower(word[i]);
-    }
 }
 
-bool check_dictionary(const char *word, int dict_fd){
+bool check_dictionary(const char *word, char **dictionary, int dict_size){
+    for (int i = 0; i < dict_size; i++) {
+        const char *dict_word = dictionary[i];
+
+        bool lowercase = true;
+        for (int j = 0; dict_word[j]; j++) {
+            if (isupper((unsigned char)dict_word[j])) {
+                lowercase = false;
+                break;
+            }
+        }
+
+        if (lowercase) {
+            if (strcasecmp(word, dict_word) == 0) return true;
+        } else {
+            if (strcmp(word, dict_word) == 0) return true;
+        }
+    }
     return false;
 }
 
-void read_file(const char *filePath, int dict_fd, int *dict_size){
-    int file_fd = open(filePath, O_RDONLY);
-    if(file_fd < 0){
+void read_file(const char *filePath, char **dictionary, int *dict_size){
+    int fd = open(filePath, O_RDONLY);
+    if(fd < 0){
         perror(filePath);
         return;
     }
 
     char buf[BUFSIZE + 1];
     int bytes;
-    char *word = NULL;
-    int capacity = 0;
-    int word_length = 0;
-    int line = 1;
-    int col = 1;
-    int startCol = 1;
+    int capacity = 16, word_length = 0;
+    char *word = malloc(capacity);
+    if(!word){
+        perror("malloc");
+        close(fd);
+        return;
+    }
+    int line = 1, col = 1, startCol = 1;
 
-    while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
+    while((bytes = read(fd, buf, BUFSIZE)) > 0){
         // tokenize and check each word in dictionary
         for(int i = 0; i < bytes; i++){
             char ch = buf[i];
-            col++;
 
             if(isspace(ch)){ // end of word
                 if(word_length > 0){
                     word[word_length] = '\0';
                     normalize(word);
 
-                    if(strlen(word) > 0 && !is_number(word)){ 
-                        // print misspelled words
-                        if(!check_dictionary(word, dict_fd)){
-                            printf("%s:%d:%d %s", filePath, line, startCol, word);
-                        }
+                    // print misspelled words
+                    if(strlen(word) > 0 && !is_number(word) && !check_dictionary(word, dictionary, dict_size)){
+                        printf("%s:%d:%d %s\n", filePath, line, startCol, word);
                     }
+
                     word_length = 0;
                 }
                 if(ch == '\n'){ // new line
@@ -282,36 +292,35 @@ void read_file(const char *filePath, int dict_fd, int *dict_size){
                     startCol = col; // column number of new word
                 }
 
-                if(word == NULL){ // allocate memory for new word
-                    capacity = 16;
-                    word = malloc(capacity);
-                    if(!word){
-                        perror("malloc");
-                        close(file_fd);
-                        return;
-                    }
-                }
-
                 if(word_length + 1 >= capacity){ // resize word
                     capacity *= 2;
-                    char *temp = realloc(word, capacity);
-                    if(!temp){
+                    word = realloc(word, capacity);
+                    if(!word){
                         perror("realloc");
-                        free(word);
-                        close(file_fd);
+                        close(fd);
                         return;
                     }
                 }
 
                 word[word_length++] = ch;
             }
+            col++;
         }
     }
+
+    if(word_length > 0){
+        word[word_length] = '\0';
+        normalize(word);
+        if(strlen(word) > 0 && !is_number(word) && !check_dictionary(word, dictionary, dict_size)){
+            printf("%s:%d:%d %s\n", filePath, line, startCol, word);
+        }
+    }
+
     free(word);
-    close(file_fd);
+    close(fd);
 }
 
-void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
+void traverse_directory(const char *dirPath, const char *suffix, char **dictionary, int dict_size){
     DIR *dp = opendir(dirPath);
     if(dp == NULL){
         perror(dirPath);
@@ -334,20 +343,20 @@ void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
         }
         snprintf(path, size, "%s/%s", dirPath, de->d_name);
 
-        struct stat subStat;
-        if(stat(path, &subStat) == -1){
+        struct stat st;
+        if(stat(path, &st) == -1){
             perror(path);
-            free(path)
+            free(path);
             continue;
         }
 
-        if(S_ISREG(subStat.st_mode)){
-            if(strstr(de->d_name, suffix) != NULL){
-                // matching suffix file
-                read_file(path, dict_fd);
-            }
-        }else if(S_ISDIR(subStat.st_mode)){ // recursively go through directory
-            traverse_directory(path, suffix, dict_fd);
+        int length = strlen(de->d_name);
+        int suffixLength = strlen(suffix);
+        if(S_ISREG(st.st_mode) && len >= suff_len && strcmp(de->d_name + len - suffixLength, suffix) == 0){
+            // matching suffix file
+            read_file(path, dictionary, dict_size);
+        }else if(S_ISDIR(st.st_mode)){ // recursively go through directory
+            traverse_directory(path, suffix, dictionary, dict_size);
         }
         free(path);
     }

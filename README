@@ -4,6 +4,25 @@ Jazmin Delos Santos jad629
 Design Notes:
 
 Requirements:
+  Must properly take arguments, specifying when there is a suffix. 
+  Must normalize the words before checking if they are in the dictionary so that they follow the capitalization and punctuation rules.
+  Must ignore words that are only digits or symbols. 
+  Must ensure the correct path is reported for files in subdirectories. 
 
 Test Scenarios and Test Cases:
+  We set up an automated test program with five different tests that check our library’s functionality according to all of the 
+  requirements. The test program uses test files and checks that the program output matches the expected output. 
 
+  Test 1 handles the case that all the words in a text file are found successfully in the dictionary, therefore we expect no errors. 
+
+  Test 2 handles the rules of capitalization that invalidate a word. We expect letters that are capitalized in the dictionary to be
+  capitalized in the text file, while letters that are lowercase in the dictionary accept all forms. 
+
+  Test 3 handles the special cases that include numbers and punctuation. This test ensures that the cleanup of the word is done 
+  correctly. Punctuation is only valid if it is somewhere in the middle of the word and digits are only valid if they are mixed with 
+  letters. 
+
+  Test 4 ensures that directory traversal is happening recursively and ignoring hidden files. It checks that the words are reported 
+  with the correct paths. 
+
+  Test 5 checks the suffix filtering. We expect that when a suffix is specified, only files with that specification will be handled. 
