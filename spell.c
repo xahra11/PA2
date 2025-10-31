@@ -87,6 +87,10 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     return 0;
 }
 
+int compare_string(const void *a, const void *b) {
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+
 char **load_dictionary(const char *dictPath, int *dict_size){
     int fd = open(dictPath, O_RDONLY);
     if(fd < 0){
@@ -179,6 +183,8 @@ char **load_dictionary(const char *dictPath, int *dict_size){
 
     free(word);
     close(fd);
+
+    qsort(dictionary, *dict_size, sizeof(char *), compare_string);
     return dictionary;
 }
 
@@ -228,27 +234,21 @@ void normalize(char *word){
 }
 
 bool check_dictionary(const char *word, char **dictionary, int dict_size){
-    for (int i = 0; i < dict_size; i++) {
-        const char *dict_word = dictionary[i];
+    char *key = strdup(word);
+    if(!key){
+        return false;
+    } 
 
-        bool lowercase = true;
-        for (int j = 0; dict_word[j]; j++) {
-            if (isupper((unsigned char)dict_word[j])) {
-                lowercase = false;
-                break;
-            }
-        }
+    for(int i = 0; key[i]; i++){
+        key[i] = tolower((unsigned char)key[i]);
+    } 
 
-        if (lowercase) {
-            if (strcasecmp(word, dict_word) == 0) return true;
-        } else {
-            if (strcmp(word, dict_word) == 0) return true;
-        }
-    }
-    return false;
+    char **found = bsearch(&key, dictionary, dict_size, sizeof(char *), compare_string);
+    free(key);
+    return found != NULL;
 }
 
-void read_file(const char *filePath, char **dictionary, int *dict_size){
+void read_file(const char *filePath, char **dictionary, int dict_size){
     int fd = open(filePath, O_RDONLY);
     if(fd < 0){
         perror(filePath);
@@ -352,7 +352,7 @@ void traverse_directory(const char *dirPath, const char *suffix, char **dictiona
 
         int length = strlen(de->d_name);
         int suffixLength = strlen(suffix);
-        if(S_ISREG(st.st_mode) && len >= suff_len && strcmp(de->d_name + len - suffixLength, suffix) == 0){
+        if(S_ISREG(st.st_mode) && length >= suffixLength && strcmp(de->d_name + length - suffixLength, suffix) == 0){
             // matching suffix file
             read_file(path, dictionary, dict_size);
         }else if(S_ISDIR(st.st_mode)){ // recursively go through directory
