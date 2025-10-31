@@ -1,21 +1,28 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -O2
-TARGET = spell
+
+#Executables
+SPELL = spell
 TESTER = tests
 
-all: $(TARGET) $(TESTER)
+#Default target
+all: $(SPELL) $(TESTER)
 
-$(TARGET): spell.c
-	$(CC) $(CFLAGS) -o $(TARGET) spell.c
+#Build spell program
+$(SPELL): spell.c
+	$(CC) $(CFLAGS) -o $(SPELL) spell.c
 
+#Build test runner
 $(TESTER): tests.c
 	$(CC) $(CFLAGS) -o $(TESTER) tests.c
 
-# Run the tests
+#Run automated tests
 test: all
-	@echo "Running automated tests..."
+	@echo "Running Tests..."
 	@./$(TESTER)
 
+#Clean build output
 clean:
-	rm -f $(TARGET) $(TESTER) output.txt
+	rm -f $(SPELL) $(TESTER) output.txt
 
+.PHONY: all test clean
