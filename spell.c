@@ -17,9 +17,12 @@
 // finding and opening all the specified files, including directory traversal
 
 // function  prototypes
-void read_file(const char *filePath, int dict_fd);
-void traverse_directory(const char *dirPath, const char *suffix, int dict_fd);
-char **load_dictionary(const char *dictPath);
+void read_file(const char *filePath, char **dictionary, int dict_size);
+void traverse_directory(const char *dirPath, const char *suffix, char **dictionary, int dict_size);
+char **load_dictionary(const char *dictPath, int *dict_size);
+bool check_dictionary(const char *word, char **dictionary, int dict_size);
+void normalize(char *word);
+bool is_number(const char *word);
 
 int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or directory}]*, suffix is optional
     // dictionary has word list
@@ -45,7 +48,8 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     }
 
     char *dictPath = argv[index];
-    char **dictionary = load_dictionary(dictPath);
+    int dict_size = 0;
+    char **dictionary = load_dictionary(dictPath, &dict_size);
 
     if (!dictionary) {
         fprintf(stderr, "%s\n dictionary did not load.\n", dictPath);
