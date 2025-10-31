@@ -86,6 +86,10 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
 }
 
 bool is_number(const char *word){ // check if word is only a number
+    if(!word || word[0] == '\0'){
+        return;
+    }
+    
     for(int i = 0; word[i]; i++){
         if(!isdigit((unsigned char)word[i])){
             return false;
@@ -174,10 +178,10 @@ void read_file(const char *filePath, int dict_fd){
                 }
             }else{
                 if(word_length == 0){
-                    startCol = col;
+                    startCol = col; // column number of new word
                 }
 
-                if(word == NULL){
+                if(word == NULL){ // allocate memory for new word
                     capacity = 16;
                     word = malloc(capacity);
                     if(!word){
@@ -187,7 +191,7 @@ void read_file(const char *filePath, int dict_fd){
                     }
                 }
 
-                if(word_length + 1 >= capacity){
+                if(word_length + 1 >= capacity){ // resize word
                     capacity *= 2;
                     char *temp = realloc(word, capacity);
                     if(!tmp){
@@ -219,12 +223,20 @@ void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
             continue;
         }
 
-        char path[1024];
-        snprintf(path, sizeof(path), "%s/%s", dirPath, de->d_name);
+        // file path 
+        int size = strlen(dirPath) + 1 + strlen(de->d_name) + 1;
+        char *path = malloc(size);
+        if(!path){
+            perror("malloc");
+            closedir(dp);
+            return
+        }
+        snprintf(path, size, "%s/%s", dirPath, de->d_name);
 
         struct stat subStat;
         if(stat(path, &subStat) == -1){
             perror(path);
+            free(path)
             continue;
         }
 
@@ -233,9 +245,10 @@ void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
                 // matching suffix file
                 read_file(path, dict_fd);
             }
-        }else if(S_ISDIR(subStat.st_mode)){
+        }else if(S_ISDIR(subStat.st_mode)){ // recursively go through directory
             traverse_directory(path, suffix, dict_fd);
         }
+        free(path);
     }
     closedir(dp);
 }
