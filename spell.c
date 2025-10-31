@@ -76,11 +76,13 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }
     } 
 
+    close(dict_fd);
+    return 0
 }
 
 bool is_number(const char *word){
     for(int i = 0; word[i]; i++){
-        if(isalpha((unsigned char)word[i])){
+        if(!isdigit((unsigned char)word[i])){
             return false;
         }
     }
@@ -111,7 +113,7 @@ void strip_word(char *word){
     }
 }
 
-bool in_dictionary(const char *word){
+bool in_dictionary(const char *word, int dict_fd){
     return false;
 }
 
@@ -123,6 +125,7 @@ void read_file(const char *filePath, int dict_fd){
     }
 
     char buf[BUFSIZE + 1];
+    char word[MAX_WORD];
     int bytes;
     int word_length = 0;
     int line = 1;
@@ -141,8 +144,8 @@ void read_file(const char *filePath, int dict_fd){
                     strip_word(word);\
 
                     if(strlen(word) > 0 && !is_number(word)){ 
-                        if(!in_dictionary(word)){
-                            // handle word not in dictionary
+                        if(!in_dictionary(word, dict_fd)){
+                            printf("%s:%d:%d %s", filePath, line, col, word);
                         }
                     }
                     word_length = 0;
