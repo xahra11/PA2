@@ -16,6 +16,31 @@
 
 // finding and opening all the specified files, including directory traversal
 
+void strip_word(char *word){
+    int start = 0;
+    int end = strlen(word) - 1;
+
+    while(start <= end && ispunct((unsigned char)word[start]) && word[start] != '-'){
+        start++;
+    }
+
+    while(end >= start && ispunct((unsigned char)word[end]) && word[end] != '-'){
+        end--;
+    }
+
+    int len = end - start + 1;
+    memmove(word, word + start, len);
+    word[len] = '\0';
+
+    for(int i = 0; word[i]; i++){
+        word[i] = tolower(word[i]);
+    }
+}
+
+void get_dictionary(const char *dictPath){
+    
+}
+
 void read_file(const char *filePath, int dict_fd){
     int file_fd = open(filePath, O_RDONLY);
     if(file_fd < 0){
@@ -29,6 +54,18 @@ void read_file(const char *filePath, int dict_fd){
     while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
         buf[bytes] = '\0';
         // tokenize and check each word in dictionary
+
+        for(int i = 0; i < bytes; i++){
+            char c = buf[i];
+            col++;
+
+            if(isspace(c)){
+                if(wlen > 0){
+                    word[wlen] = '\0';
+                    
+                }
+            }
+        }
     }
     close(fd);
 }
@@ -116,20 +153,10 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }
 
         if(S_ISREG(statinfo.st_mode)){ // is regular file, open file
-            int file_fd = open(filePath, O_RDONLY);
-            if(file_fd < 0){
-                perror(filePath);
-                continue;
-            }
-
-            while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
-                buf[bytes] = '\0';
-                // TO DO: read file using buffer
-            }
-            if
+            read_file(filePath, dict_fd);
             
         }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it
-            // TO DO: traverse directory, then open each file
+            traverse_directory(filePath, suffix, dict_fd);
             
         }
     } 
