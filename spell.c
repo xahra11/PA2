@@ -9,6 +9,7 @@
 #include <ctype.h>
 
 #define BUFSIZE 128
+#define MAX_WORD 256
 
 // reading the file and generating a sequence of position-annotated words
 
@@ -17,7 +18,6 @@
 // finding and opening all the specified files, including directory traversal
 
 // function  prototypes
-void strip_word(char *word);
 void read_file(const char *filePath, int dict_fd);
 void traverse_directory(const char *dirPath, const char *suffix, int dict_fd);
 
@@ -30,11 +30,9 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         exit(EXIT_FAILURE);
     }
 
-    bool suffixExists = false 
+    bool suffixExists = false;
     char *suffix = ".txt"; // default suffix
     int index = 1; 
-    char buf[BUFSIZE + 1]; // +1 for \n
-    int bytes;
 
     if(strcmp(argv[1], "-s") == 0){
         if(argc < 4){
@@ -53,7 +51,7 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         exit(EXIT_FAILURE);
     }
 
-    for(int i = 2; i < argc; i++){
+    for(int i = (index + 1); i < argc; i++){
         if (strcmp(argv[i], "-s") == 0){
             fprintf(stderr, "ERROR: -s can only be the first argument.\n"); // forbid -s from occurring later than first argument
             return 1;
@@ -80,6 +78,15 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
 
 }
 
+bool is_number(const char *word){
+    for(int i = 0; word[i]; i++){
+        if(isalpha((unsigned char)word[i])){
+            return false;
+        }
+    }
+    return true;
+}
+
 void strip_word(char *word){
     int start = 0;
     int end = strlen(word) - 1;
@@ -92,13 +99,20 @@ void strip_word(char *word){
         end--;
     }
 
-    int len = end - start + 1;
-    memmove(word, word + start, len);
-    word[len] = '\0';
+    int length = end - start + 1;
+    if(length < 0){
+        length = 0;
+    }
+    memmove(word, word + start, length);
+    word[length] = '\0';
 
     for(int i = 0; word[i]; i++){
         word[i] = tolower(word[i]);
     }
+}
+
+bool in_dictionary(const char *word){
+    return false;
 }
 
 void read_file(const char *filePath, int dict_fd){
@@ -110,6 +124,9 @@ void read_file(const char *filePath, int dict_fd){
 
     char buf[BUFSIZE + 1];
     int bytes;
+    int word_length = 0;
+    int line = 1;
+    int col = 0;
 
     while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
         buf[bytes] = '\0';
@@ -121,7 +138,7 @@ void read_file(const char *filePath, int dict_fd){
             if(isspace(ch)){
                 if(word_length > 0){
                     word[word_length] = '\0';
-                    strip_word(word);
+                    strip_word(word);\
 
                     if(strlen(word) > 0 && !is_number(word)){ 
                         if(!in_dictionary(word)){
@@ -141,7 +158,7 @@ void read_file(const char *filePath, int dict_fd){
             }
         }
     }
-    close(fd);
+    close(file_fd);
 }
 
 void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
@@ -158,7 +175,7 @@ void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
         }
 
         char path[1024];
-        snprintf(path, sizeof(path), "%s/%s", path, de->d_name);
+        snprintf(path, sizeof(path), "%s/%s", dirPath, de->d_name);
 
         struct stat subStat;
         if(stat(path, &subStat) == -1){
@@ -177,3 +194,4 @@ void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
     }
     closedir(dp);
 }
+
