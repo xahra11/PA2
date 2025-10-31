@@ -10,3 +10,6 @@ boo
 spider8
 Ghoul
 hello
+the
+and
+say
