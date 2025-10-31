@@ -1,0 +1,3 @@
+testfiles/evil.txt:1:1 ghoul
+testfiles/evil.txt:2:1 GHOUL
+testfiles/evil.txt:4:1 gHOuL
