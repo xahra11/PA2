@@ -1,4 +1,1 @@
-ghoul
-GHOUL
-Ghoul
-gHOuL
+ghoul GHOUL Ghoul gHOuL
