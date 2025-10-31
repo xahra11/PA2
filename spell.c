@@ -16,93 +16,10 @@
 
 // finding and opening all the specified files, including directory traversal
 
-void strip_word(char *word){
-    int start = 0;
-    int end = strlen(word) - 1;
-
-    while(start <= end && ispunct((unsigned char)word[start]) && word[start] != '-'){
-        start++;
-    }
-
-    while(end >= start && ispunct((unsigned char)word[end]) && word[end] != '-'){
-        end--;
-    }
-
-    int len = end - start + 1;
-    memmove(word, word + start, len);
-    word[len] = '\0';
-
-    for(int i = 0; word[i]; i++){
-        word[i] = tolower(word[i]);
-    }
-}
-
-void get_dictionary(const char *dictPath){
-    
-}
-
-void read_file(const char *filePath, int dict_fd){
-    int file_fd = open(filePath, O_RDONLY);
-    if(file_fd < 0){
-        perror(filePath);
-        return;
-    }
-
-    char buf[BUFSIZE + 1];
-    int bytes;
-
-    while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
-        buf[bytes] = '\0';
-        // tokenize and check each word in dictionary
-
-        for(int i = 0; i < bytes; i++){
-            char c = buf[i];
-            col++;
-
-            if(isspace(c)){
-                if(wlen > 0){
-                    word[wlen] = '\0';
-                    
-                }
-            }
-        }
-    }
-    close(fd);
-}
-
-void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
-    DIR *dp = opendir(dirPath);
-    if(dp == NULL){
-        perror(dirPath);
-        return;
-    }
-
-    struct dirent *de;
-    while((de = readdir(dp)) != NULL){
-        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0){
-            continue;
-        }
-
-        char path[1024];
-        snprintf(path, sizeof(path), "%s/%s", path, de->d_name);
-
-        struct stat subStat;
-        if(stat(path, &subStat) == -1){
-            perror(path);
-            continue;
-        }
-
-        if(S_ISREG(subStat.st_mode)){
-            if(strstr(de->d_name, suffix) != NULL){
-                // matching suffix file
-                read_file(path, dict_fd);
-            }
-        }else if(S_ISDIR(subStat.st_mode)){
-            traverse_directory(path, suffix, dict_fd);
-        }
-    }
-    closedir(dp);
-}
+// function  prototypes
+void strip_word(char *word);
+void read_file(const char *filePath, int dict_fd);
+void traverse_directory(const char *dirPath, const char *suffix, int dict_fd);
 
 int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or directory}]*, suffix is optional
     // dictionary has word list
@@ -161,4 +78,102 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }
     } 
 
+}
+
+void strip_word(char *word){
+    int start = 0;
+    int end = strlen(word) - 1;
+
+    while(start <= end && ispunct((unsigned char)word[start]) && word[start] != '-'){
+        start++;
+    }
+
+    while(end >= start && ispunct((unsigned char)word[end]) && word[end] != '-'){
+        end--;
+    }
+
+    int len = end - start + 1;
+    memmove(word, word + start, len);
+    word[len] = '\0';
+
+    for(int i = 0; word[i]; i++){
+        word[i] = tolower(word[i]);
+    }
+}
+
+void read_file(const char *filePath, int dict_fd){
+    int file_fd = open(filePath, O_RDONLY);
+    if(file_fd < 0){
+        perror(filePath);
+        return;
+    }
+
+    char buf[BUFSIZE + 1];
+    int bytes;
+
+    while((bytes = read(file_fd, buf, BUFSIZE)) > 0){
+        buf[bytes] = '\0';
+        // tokenize and check each word in dictionary
+        for(int i = 0; i < bytes; i++){
+            char ch = buf[i];
+            col++;
+
+            if(isspace(ch)){
+                if(word_length > 0){
+                    word[word_length] = '\0';
+                    strip_word(word);
+
+                    if(strlen(word) > 0 && !is_number(word)){ 
+                        if(!in_dictionary(word)){
+                            // handle word not in dictionary
+                        }
+                    }
+                    word_length = 0;
+                }
+                if(ch == '\n'){
+                    line++;
+                    col = 0;
+                }
+            }else{
+                if(word_length < MAX_WORD - 1){
+                    word[word_length++] = ch;
+                } 
+            }
+        }
+    }
+    close(fd);
+}
+
+void traverse_directory(const char *dirPath, const char *suffix, int dict_fd){
+    DIR *dp = opendir(dirPath);
+    if(dp == NULL){
+        perror(dirPath);
+        return;
+    }
+
+    struct dirent *de;
+    while((de = readdir(dp)) != NULL){
+        if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0){
+            continue;
+        }
+
+        char path[1024];
+        snprintf(path, sizeof(path), "%s/%s", path, de->d_name);
+
+        struct stat subStat;
+        if(stat(path, &subStat) == -1){
+            perror(path);
+            continue;
+        }
+
+        if(S_ISREG(subStat.st_mode)){
+            if(strstr(de->d_name, suffix) != NULL){
+                // matching suffix file
+                read_file(path, dict_fd);
+            }
+        }else if(S_ISDIR(subStat.st_mode)){
+            traverse_directory(path, suffix, dict_fd);
+        }
+    }
+    closedir(dp);
 }
