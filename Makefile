@@ -1,15 +1,15 @@
 CC = gcc
 CFLAGS = -std=c11 -Wall -Wextra -O2
 TARGET = spell
-TESTER = run_tests
+TESTER = tests
 
 all: $(TARGET) $(TESTER)
 
 $(TARGET): spell.c
 	$(CC) $(CFLAGS) -o $(TARGET) spell.c
 
-$(TESTER): run_tests.c
-	$(CC) $(CFLAGS) -o $(TESTER) run_tests.c
+$(TESTER): tests.c
+	$(CC) $(CFLAGS) -o $(TESTER) tests.c
 
 # Run the tests
 test: all
@@ -18,3 +18,4 @@ test: all
 
 clean:
 	rm -f $(TARGET) $(TESTER) output.txt
+
