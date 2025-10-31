@@ -45,13 +45,15 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
     }
 
     char *dictPath = argv[index];
-    int dict_fd = open(dictPath, O_RDONLY);
-    if (dict_fd < 0) {
-        perror(dictPath);
+
+    int dict_size = 0;
+    char **dictionary = load_dictionary(dictPath, &dict_size);
+    if (!dictionary) {
+        fprintf(stderr, "%s\n dictionary did not load.\n", dictPath);
         exit(EXIT_FAILURE);
     }
 
-    for(int i = (index + 1); i < argc; i++){
+    for(int i = 1; i < argc; i++){
         if (strcmp(argv[i], "-s") == 0){
             fprintf(stderr, "ERROR: -s can only be the first argument.\n"); // forbid -s from occurring later than first argument
             return 1;
@@ -68,15 +70,19 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }
 
         if(S_ISREG(statinfo.st_mode)){ // is regular file, open file
-            read_file(filePath, dict_fd);
+            read_file(filePath, dictionary, dict_size);
             
         }else if(S_ISDIR(statinfo.st_mode)){ // is directory, traverse through it
-            traverse_directory(filePath, suffix, dict_fd);
+            traverse_directory(filePath, suffix, dictionary, dict_size);
             
         }
     } 
 
-    close(dict_fd);
+    for (int i = 0; i < dict_size; i++) {
+        free(dictionary[i]);
+    }
+    free(dictionary);
+    
     return 0
 }
 
@@ -113,7 +119,7 @@ void strip_word(char *word){
     }
 }
 
-bool in_dictionary(const char *word, int dict_fd){
+bool check_dictionary(const char *word, int dict_fd){
     return false;
 }
 
@@ -144,7 +150,7 @@ void read_file(const char *filePath, int dict_fd){
                     strip_word(word);\
 
                     if(strlen(word) > 0 && !is_number(word)){ 
-                        if(!in_dictionary(word, dict_fd)){
+                        if(!check_dictionary(word, dict_fd)){
                             printf("%s:%d:%d %s", filePath, line, col, word);
                         }
                     }
