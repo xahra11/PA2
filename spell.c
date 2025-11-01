@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,7 @@
 
 // function  prototypes
 void read_file(const char *filePath, char **dictionary, int dict_size);
+void read_stdin(char **dictionary, int dict_size);
 void traverse_directory(const char *dirPath, const char *suffix, char **dictionary, int dict_size);
 char **load_dictionary(const char *dictPath, int *dict_size);
 bool check_dictionary(const char *word, char **dictionary, int dict_size);
@@ -61,6 +63,18 @@ int main(int argc, char *argv[]) { // spell [-s {suffix}] {dictionary} [{file or
         }
     }
 
+    // If NO file or directory arguments → read from standard input
+    if (index + 1 == argc) {
+        read_stdin(dictionary, dict_size);
+
+        // free dictionary before exiting
+        for (int i = 0; i < dict_size; i++) {
+            free(dictionary[i]);
+        }
+        free(dictionary);
+        return 0;
+    }
+    
     for(int i = index + 1; i < argc; i++){
         char *filePath = argv[i];
         struct stat statinfo;
@@ -217,7 +231,7 @@ void normalize(char *word){
     }
 
     // move end index backward to ignore trailing punctuation
-    while (end >= start && !isalnum((unsigned char)word[end]) && word[end] != '-') {
+    while (end >= start && !isalnum((unsigned char)word[end])) {
         end--;
     }
 
@@ -243,7 +257,9 @@ bool check_dictionary(const char *word, char **dictionary, int dict_size){
         key[i] = tolower((unsigned char)key[i]);
     } 
 
-    char **found = bsearch(&key, dictionary, dict_size, sizeof(char *), compare_string);
+    char *key2 = key; 
+    char **found = bsearch(&key2, dictionary, dict_size, sizeof(char *), compare_string);
+
     free(key);
     return found != NULL;
 }
@@ -318,6 +334,67 @@ void read_file(const char *filePath, char **dictionary, int dict_size){
 
     free(word);
     close(fd);
+}
+
+void read_stdin(char **dictionary, int dict_size) {
+    int fd = STDIN_FILENO; // standard input
+
+    char buf[BUFSIZE + 1];
+    int bytes;
+    int capacity = 16, word_length = 0;
+    char *word = malloc(capacity);
+    if(!word){
+        perror("malloc");
+        return;
+    }
+    int line = 1, col = 1, startCol = 1;
+
+    while((bytes = read(fd, buf, BUFSIZE)) > 0){
+        for(int i = 0; i < bytes; i++){
+            char ch = buf[i];
+
+            if(isspace(ch)){ // end of word
+                if(word_length > 0){
+                    word[word_length] = '\0';
+                    normalize(word);
+
+                    if(strlen(word) > 0 && !is_number(word) && !check_dictionary(word, dictionary, dict_size)){
+                        printf("<stdin>:%d:%d %s\n", line, startCol, word);
+                    }
+
+                    word_length = 0;
+                }
+                if(ch == '\n'){
+                    line++;
+                    col = 1;
+                }
+            } else {
+                if(word_length == 0){
+                    startCol = col;
+                }
+                if(word_length + 1 >= capacity){
+                    capacity *= 2;
+                    word = realloc(word, capacity);
+                    if(!word){
+                        perror("realloc");
+                        return;
+                    }
+                }
+                word[word_length++] = ch;
+            }
+            col++;
+        }
+    }
+
+    if(word_length > 0){
+        word[word_length] = '\0';
+        normalize(word);
+        if(strlen(word) > 0 && !is_number(word) && !check_dictionary(word, dictionary, dict_size)){
+            printf("<stdin>:%d:%d %s\n", line, startCol, word);
+        }
+    }
+
+    free(word);
 }
 
 void traverse_directory(const char *dirPath, const char *suffix, char **dictionary, int dict_size){

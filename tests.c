@@ -23,23 +23,21 @@ int main(void) {
         //clean words of punctuation 
         { "Test 3: Punctuation rules",
           "./spell dictionary1.txt testfiles/special.txt > output.txt",
-          "expected/special.out"
-        },
+          "expected/special.out"},
+
         //directory traversal
         { "Test 4: Recursive directory traversal",
           "./spell dictionary1.txt testfiles/testDir > output.txt",
-          "expected/testDir.out"
-        },
+          "expected/testDir.out"},
+
         //-s suffix
         { "Test 5: Suffix (-s) option",
           "./spell -s .data dictionary1.txt testfiles/testSuffix > output.txt",
-          "expected/suffix.out"
-        }
+          "expected/suffix.out"},
 
         { "Test 6: Standard input reading",
           "cat testfiles/stdin.txt | ./spell dictionary1.txt > output.txt",
-          "expected/stdin.out"
-        }
+          "expected/stdin.out"}
     };
 
     int total = sizeof(tests) / sizeof(Test);
