@@ -16,24 +16,29 @@ int main(void) {
           ""},
 
         //capitalization rules
-        { "Test 2: Capitalization rules + unknown words",
+        { "Test 2: Capitalization rules",
           "./spell dictionary1.txt testfiles/evil.txt > output.txt",
           "expected/evil.out"},
 
         //clean words of punctuation 
-        { "Test 3: Word parsing rules",
+        { "Test 3: Punctuation rules",
           "./spell dictionary1.txt testfiles/special.txt > output.txt",
           "expected/special.out"
         },
         //directory traversal
-        { "Test 4: Directory traversal recursive test",
+        { "Test 4: Recursive directory traversal",
           "./spell dictionary1.txt testfiles/testDir > output.txt",
           "expected/testDir.out"
         },
         //-s suffix
-        { "Test 5: Suffix (-s) option test",
+        { "Test 5: Suffix (-s) option",
           "./spell -s .data dictionary1.txt testfiles/testSuffix > output.txt",
           "expected/suffix.out"
+        }
+
+        { "Test 6: Standard input reading",
+          "cat testfiles/stdin.txt | ./spell dictionary1.txt > output.txt",
+          "expected/stdin.out"
         }
     };
 
